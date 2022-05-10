@@ -1,0 +1,1 @@
+docker run -it --rm -v /Users/sqwriwy/Desktop/大三下/编译原理/lab:/root maxxing/compiler-dev bash
