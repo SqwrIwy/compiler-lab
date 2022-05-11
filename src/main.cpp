@@ -31,13 +31,13 @@ int main(int argc, const char *argv[])
 
   if (string(mode).compare(string("-koopa")) == 0)
   {
-    cout << ast->IR_string();
+    cout << ast->IR_string(nullptr);
   }
 
   if (string(mode).compare(string("-riscv")) == 0)
   {
     koopa_program_t program;
-    koopa_error_code_t ret = koopa_parse_from_string(ast->IR_string().c_str(), &program);
+    koopa_error_code_t ret = koopa_parse_from_string(ast->IR_string(nullptr).c_str(), &program);
     assert(ret == KOOPA_EC_SUCCESS);
     koopa_raw_program_builder_t builder = koopa_new_raw_program_builder();
     koopa_raw_program_t raw = koopa_build_raw_program(builder, program);
