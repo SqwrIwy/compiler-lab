@@ -84,6 +84,10 @@ void visit(const koopa_raw_basic_block_t &bb)
                 cout << "lw t0, " + offset(lhs) << endl;
                 break;
 
+            case KOOPA_RVT_LOAD:
+                cout << "lw t0, " + offset(lhs) << endl;
+                break;
+
             default:
                 assert(false);
             }
@@ -98,27 +102,14 @@ void visit(const koopa_raw_basic_block_t &bb)
                 cout << "lw t1, " + offset(rhs) << endl;
                 break;
 
+            case KOOPA_RVT_LOAD:
+                cout << "lw t1, " + offset(rhs) << endl;
+                break;
+
             default:
                 assert(false);
             }
 
-// 0  NotEq
-// 1  Eq
-// 2  Gt
-// 3  Lt
-// 4  Ge
-// 5  Le
-// 6  Add
-// 7  Sub
-// 8  Mul
-// 9  Div
-// 10 Mod
-// 11 And
-// 12 Or
-// 13 Xor
-// 14 Shl
-// 15 Shr
-// 16 Sar
             switch (value->kind.data.binary.op)
             {
             case 0: // ne
@@ -226,12 +217,43 @@ void visit(const koopa_raw_basic_block_t &bb)
                 cout << "lw a0, " + offset(ret) << endl;
                 break;
 
+            case KOOPA_RVT_LOAD:
+                cout << "lw a0, " + offset(ret) << endl;
+                break;
+
             default:
                 assert(false);
             }
 
             cout << "addi sp, sp, " + to_string(stack_frame_size * 4) << endl;
             cout << "ret" << endl;
+            break;
+        }
+
+        case KOOPA_RVT_ALLOC:
+        {
+            break;
+        }
+
+        case KOOPA_RVT_LOAD:
+        {
+            auto src = value->kind.data.load.src;
+            cout << "lw t0, " + offset(src) + "\n";
+            cout << "sw t0, " + offset(value) + "\n";
+            break;
+        }
+
+        case KOOPA_RVT_STORE:
+        {
+            auto src = value->kind.data.store.value;
+            auto dest = value->kind.data.store.dest;
+
+            if (src->kind.tag == KOOPA_RVT_INTEGER)
+                cout << "li t0, " + to_string(src->kind.data.integer.value) + "\n";
+            else
+                cout << "lw t0, " + offset(src) + "\n";
+
+            cout << "sw t0, " + offset(dest) + "\n";
             break;
         }
 
@@ -290,11 +312,16 @@ int calc_stack_frame_size(const koopa_raw_slice_t &slice)
     {
         auto ptr = slice.buffer[i];
         assert(slice.kind == KOOPA_RSIK_VALUE);
-        if (has_return_value(reinterpret_cast<koopa_raw_value_t>(ptr)))
+        auto value = reinterpret_cast<koopa_raw_value_t>(ptr);
+        if (value->kind.tag == KOOPA_RVT_ALLOC || has_return_value(value))
         {
-            off[reinterpret_cast<uintptr_t>(ptr)] = stack_frame_size;
+            off[reinterpret_cast<uintptr_t>(value)] = stack_frame_size;
             stack_frame_size++;
         }
+    }
+    if ((stack_frame_size & 3) > 0)
+    {
+        stack_frame_size = ((stack_frame_size >> 2) + 1) << 2;
     }
     return stack_frame_size;
 }

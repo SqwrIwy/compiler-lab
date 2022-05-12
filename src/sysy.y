@@ -26,11 +26,11 @@ using namespace std;
   BaseAST *ast_val;
 }
 
-%token INT RETURN LEQ GEQ EQ NEQ AND OR
+%token INT RETURN CONST LEQ GEQ EQ NEQ AND OR
 %token <str_val> IDENT
 %token <int_val> INT_CONST
 
-%type <ast_val> FuncDef FuncType Block Stmt Exp PrimaryExp Number UnaryExp UnaryOp MulExp AddExp RelExp EqExp LAndExp LOrExp
+%type <ast_val> FuncDef FuncType Block Stmt Exp PrimaryExp Number UnaryExp UnaryOp MulExp AddExp RelExp EqExp LAndExp LOrExp Decl ConstDecl BType ConstDefs ConstDef ConstInitVal BlockItems BlockItem LVal ConstExp VarDecl VarDefs VarDef InitVal
 
 %%
 
@@ -55,24 +55,58 @@ FuncDef
 FuncType
   : INT {
     auto ast = new FuncTypeAST();
-    ast->_int = string("int");
+    ast->_int = "int";
     $$ = ast;
   }
   ;
 
 Block
-  : '{' Stmt '}' {
+  : '{' BlockItems '}' {
     auto ast = new BlockAST();
-    ast->stmt = unique_ptr<BaseAST>($2);
+    ast->block_items = unique_ptr<BaseAST>($2);
+    $$ = ast;
+  }
+  ;
+
+BlockItems
+  : BlockItem {
+    auto ast = new BlockItemsAST();
+    ast->block_items = nullptr;
+    ast->block_item = unique_ptr<BaseAST>($1);
+    $$ = ast;
+  }
+  | BlockItems BlockItem {
+    auto ast = new BlockItemsAST();
+    ast->block_items = unique_ptr<BaseAST>($1);
+    ast->block_item = unique_ptr<BaseAST>($2);
+    $$ = ast;
+  }
+  ;
+
+BlockItem
+  : Decl {
+    auto ast = new BlockItemAST_0();
+    ast->decl = unique_ptr<BaseAST>($1);
+    $$ = ast;
+  }
+  | Stmt {
+    auto ast = new BlockItemAST_1();
+    ast->stmt = unique_ptr<BaseAST>($1);
     $$ = ast;
   }
   ;
 
 Stmt
   : RETURN Exp ';' {
-    auto ast = new StmtAST();
-    ast->_return = string("return");
+    auto ast = new StmtAST_0();
+    ast->_return = "return";
     ast->exp = unique_ptr<BaseAST>($2);
+    $$ = ast;
+  }
+  | LVal '=' Exp ';' {
+    auto ast = new StmtAST_1();
+    ast->lval = unique_ptr<BaseAST>($1);
+    ast->exp = unique_ptr<BaseAST>($3);
     $$ = ast;
   }
   ;
@@ -94,6 +128,11 @@ PrimaryExp
   | Number {
     auto ast = new PrimaryExpAST_1();
     ast->number = unique_ptr<BaseAST>($1);
+    $$ = ast;
+  }
+  | LVal {
+    auto ast = new PrimaryExpAST_2();
+    ast->lval = unique_ptr<BaseAST>($1);
     $$ = ast;
   }
   ;
@@ -271,6 +310,131 @@ LOrExp
     auto ast = new LOrExpAST_1();
     ast->lor_exp = unique_ptr<BaseAST>($1);
     ast->land_exp = unique_ptr<BaseAST>($3);
+    $$ = ast;
+  }
+  ;
+
+Decl
+  : ConstDecl {
+    auto ast = new DeclAST_0();
+    ast->const_decl = unique_ptr<BaseAST>($1);
+    $$ = ast;
+  }
+  | VarDecl {
+    auto ast = new DeclAST_1();
+    ast->var_decl = unique_ptr<BaseAST>($1);
+    $$ = ast;
+  }
+  ;
+
+ConstDecl
+  : CONST BType ConstDefs ';' {
+    auto ast = new ConstDeclAST();
+    ast->btype = unique_ptr<BaseAST>($2);
+    ast->const_defs = unique_ptr<BaseAST>($3);
+    $$ = ast;
+  }
+  ;
+
+ConstDefs
+  : ConstDef {
+    auto ast = new ConstDefsAST();
+    ast->const_defs = nullptr;
+    ast->const_def = unique_ptr<BaseAST>($1);
+    $$ = ast;
+  }
+  | ConstDefs ',' ConstDef {
+    auto ast = new ConstDefsAST();
+    ast->const_defs = unique_ptr<BaseAST>($1);
+    ast->const_def = unique_ptr<BaseAST>($3);
+    $$ = ast;
+  }
+  ;
+
+BType
+  : INT {
+    auto ast = new BTypeAST();
+    ast->btype = "int";
+    $$ = ast;
+  }
+  ;
+
+ConstDef
+  : IDENT '=' ConstInitVal {
+    auto ast = new ConstDefAST();
+    ast->ident = *$1;
+    ast->const_init_val = unique_ptr<BaseAST>($3);
+    $$ = ast;
+  }
+  ;
+
+ConstInitVal
+  : ConstExp {
+    auto ast = new ConstInitValAST();
+    ast->const_exp = unique_ptr<BaseAST>($1);
+    $$ = ast;
+  }
+  ;
+
+LVal
+  : IDENT {
+    auto ast = new LValAST();
+    ast->ident = *$1;
+    $$ = ast;
+  }
+  ;
+
+ConstExp
+  : Exp {
+    auto ast = new ConstExpAST();
+    ast->exp = unique_ptr<BaseAST>($1);
+    $$ = ast;
+  }
+  ;
+
+VarDecl
+  : BType VarDefs ';' {
+    auto ast = new VarDeclAST();
+    ast->btype = unique_ptr<BaseAST>($1);
+    ast->var_defs = unique_ptr<BaseAST>($2);
+    $$ = ast;
+  }
+  ;
+
+VarDefs
+  : VarDef {
+    auto ast = new VarDefsAST();
+    ast->var_defs = nullptr;
+    ast->var_def = unique_ptr<BaseAST>($1);
+    $$ = ast;
+  }
+  | VarDefs ',' VarDef {
+    auto ast = new VarDefsAST();
+    ast->var_defs = unique_ptr<BaseAST>($1);
+    ast->var_def = unique_ptr<BaseAST>($3);
+    $$ = ast;
+  }
+  ;
+
+VarDef
+  : IDENT {
+    auto ast = new VarDefAST();
+    ast->ident = *$1;
+    ast->init_val = nullptr;
+    $$ = ast;
+  }
+  | IDENT '=' InitVal {
+    auto ast = new VarDefAST();
+    ast->ident = *$1;
+    ast->init_val = unique_ptr<BaseAST>($3);
+    $$ = ast;
+  }
+  ;
+
+InitVal
+  : Exp {
+    auto ast = new InitValAST();
+    ast->exp = unique_ptr<BaseAST>($1);
     $$ = ast;
   }
   ;
